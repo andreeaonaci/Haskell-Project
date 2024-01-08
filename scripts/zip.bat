@@ -1,0 +1,1 @@
+tar.exe -caf src.tar.gz -C ../src Args.hs App.hs Html/Parser.hs
