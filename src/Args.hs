@@ -61,21 +61,6 @@ usage progName = "Usage: " ++ progName ++ " query pattern [files...]"
 -- >>> parseArgs "html-search.exe" ["div > h1", "--max-results", "1", "file.html"]
 -- Success (Args {argQuery = Child (Selector (QuerySelector {selectorTag = Just "div", selectorIds = [], selectorClasses = [], selectorAttributes = []})) (Selector (QuerySelector {selectorTag = Just "h1", selectorIds = [], selectorClasses = [], selectorAttributes = []})), argFiles = Files ["file.html"], argMaxResults = Just 1})
 
---without haskell style
--- parseArgs :: String -> [String] -> Result ParseArgsError Args
--- parseArgs progName args
---   | null args = Error NotEnoughArgs
---   | any (`elem` ["-h", "--help"]) args = Success $ Help (usage progName)
---   | otherwise = case separateFlags args of
---       Success (flags, query:files) -> case Q.parse query of
---         Success q -> case lookup "--max-results" flags of
---           Just maxResultsStr -> case readMaybe maxResultsStr of
---             Just maxResults -> Success $ Args q (if null files then Stdin else Files files) (Just maxResults)
---             Nothing -> Error $ InvalidArgs "Invalid max results value"
---           Nothing -> Success $ Args q (if null files then Stdin else Files files) Nothing
---         Error err -> Error $ InvalidArgs (show err)
---       Error err -> Error err
-
 parseArgs :: String -> [String] -> Result ParseArgsError Args
 parseArgs progName args
   | "-h" `elem` args || "--help" `elem` args = Success $ Help (usage progName)

@@ -131,7 +131,7 @@ parserTests =
                     testCase
                       "parses multiple nodes and text within a node"
                       10
-                      ("<div>Some <b>bold</b> text</div>" `shouldParseAs` Html.HtmlNode "div" [] [Html.Text "Some ", Html.node "b" [] [Html.Text "bold"], Html.Text "text"])
+                      ("<div>Some <b>bold</b> text</div>" `shouldParseAs` Html.HtmlNode "div" [] [Html.Text "Some ", Html.node "b" [] [Html.Text "bold"], Html.Text " text"])
                   ]
             ),
           group
@@ -152,7 +152,7 @@ parserTests =
                     testCase
                       "parses multiple nodes and text within a node"
                       10
-                      ("<div>Some <b>bold</b> text</div>" `shouldParseAs` Html.node "div" [] [Html.Text "Some ", Html.node "b" [] [Html.Text "bold"], Html.Text "text"])
+                      ("<div>Some <b>bold</b> text</div>" `shouldParseAs` Html.node "div" [] [Html.Text "Some ", Html.node "b" [] [Html.Text "bold"], Html.Text " text"])
                   ]
             )
         ]

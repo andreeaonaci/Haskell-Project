@@ -19,9 +19,9 @@ import Result
 -- Error (UnexpectedInput {gotInput = "<some text>", expectedInput = "At least one character"})
 text :: P.Parser String
 text = P.pWith (P.many (P.satisfies (\c -> c /= '<') "Not '<'")) $ \chars ->
-    if null chars
-        then P.fail "At least one character"
-        else P.succeed chars
+    let checkNonEmpty [] = P.fail "At least one character"
+        checkNonEmpty xs = P.succeed xs
+    in checkNonEmpty chars
 
 -- | Parses a self closing tag
 --
@@ -44,48 +44,23 @@ text = P.pWith (P.many (P.satisfies (\c -> c /= '<') "Not '<'")) $ \chars ->
 --
 -- >>> P.parse selfClosing "<a x/>"
 -- Success ("a",[("x",Nothing)])
--- selfClosing :: P.Parser (String, [(String, Maybe String)])
--- selfClosing = P.between (P.char '<') (P.char '/' `P.pThen` P.char '>') tagContent
---   where
---     tagContent = P.pWith P.ident $ \ident ->
---       P.pMap (\attrs -> (ident, attrs)) attributes
 
---     attributes :: P.Parser [(String, Maybe String)]
---     attributes = P.many (P.ws1 `P.pThen` attribute)
-
---     attribute :: P.Parser (String, Maybe String)
---     attribute = P.pWith P.ident $ \name ->
---       P.pMap (\value -> (name, value)) $ P.opt (P.char '=' `P.pThen` P.between (P.char '"') (P.char '"') P.ident)
--- selfClosing :: P.Parser (String, [(String, Maybe String)])
--- selfClosing = P.between (P.char '<') ((P.char '/' `P.pThen` P.char '>') `P.pThen` P.succeed []) tagContent
---   where
---     tagContent = P.pWith P.ident $ \ident ->
---       P.pMap (\attrs -> (ident, attrs)) attributes
-
---     attributes :: P.Parser [(String, Maybe String)]
---     attributes = P.many (P.ws1 `P.pThen` attribute)
-
---     attribute :: P.Parser (String, Maybe String)
---     attribute = P.pWith P.ident $ \name ->
---       P.pMap (\valueOpt -> (name, valueOpt)) $ P.opt (P.char '=' `P.pThen` P.between (P.char '"') (P.char '"') P.ident)
 selfClosing :: P.Parser (String, [(String, Maybe String)])
 selfClosing = P.between (P.char '<') (P.char '/' `P.pThen` P.char '>' `P.pThen` P.succeed []) tagContent
   where
     tagContent = P.pWith P.ident $ \ident ->
-      P.pMap (\attrs -> (ident, attrs)) attributes
-
-    attributes :: P.Parser [(String, Maybe String)]
-    attributes = P.many (P.ws1 `P.pThen` attribute)
+      let attributes = P.many (P.ws1 `P.pThen` attribute)
+      in P.pMap (\attrs -> (ident, attrs)) attributes
 
     attribute :: P.Parser (String, Maybe String)
     attribute = P.pWith P.ident $ \name ->
-      P.pMap (\valueOpt -> (name, valueOpt)) (P.opt (P.char '=' `P.pThen` attributeValue))
+      let attributeValue = P.opt (P.char '=' `P.pThen` attributeValue')
+      in P.pMap (\valueOpt -> (name, valueOpt)) attributeValue
 
-    attributeValue :: P.Parser String
-    attributeValue = P.between (P.char '"') (P.char '"') (P.many (P.satisfies (/= '"') "character")) `P.orElse`
-                    P.between (P.char '\'') (P.char '\'') (P.many (P.satisfies (/= '\'') "character")) `P.orElse`
-                    P.many (P.satisfies (\c -> c /= ' ' && c /= '>') "character")
-
+    attributeValue' :: P.Parser String
+    attributeValue' = P.between (P.char '"') (P.char '"') (P.many (P.satisfies (/= '"') "character")) `P.orElse`
+                     P.between (P.char '\'') (P.char '\'') (P.many (P.satisfies (/= '\'') "character")) `P.orElse`
+                     P.many (P.satisfies (\c -> c /= ' ' && c /= '>') "character")
 
 -- | Parses an opening tag
 --
@@ -103,16 +78,7 @@ selfClosing = P.between (P.char '<') (P.char '/' `P.pThen` P.char '>' `P.pThen` 
 --
 -- >>> P.parse openTag "<a >"
 -- Success ("a",[])
--- openTag :: P.Parser (String, [(String, Maybe String)])
--- openTag = P.between (P.char '<') (P.char '>') tagContent
---   where
---     tagContent = P.pWith P.ident $ \ident ->
---       P.pMap (\attrs -> (ident, attrs)) attributes
 
---     attributes = P.many (P.ws1 `P.pThen` attribute)
-
---     attribute = P.pWith P.ident $ \name ->
---       P.pMap (\valueOpt -> (name, valueOpt)) $ P.opt (P.char '=' `P.pThen` P.between (P.char '"') (P.char '"') P.ident)
 openTag :: P.Parser (String, [(String, Maybe String)])
 openTag = P.between (P.char '<') (P.char '>') tagContent
   where
@@ -130,8 +96,6 @@ openTag = P.between (P.char '<') (P.char '>') tagContent
     attributeValue = P.between (P.char '"') (P.char '"') (P.many (P.satisfies (/= '"') "character")) `P.orElse`
                     P.between (P.char '\'') (P.char '\'') (P.many (P.satisfies (/= '\'') "character")) `P.orElse`
                     P.many (P.satisfies (\c -> c /= ' ' && c /= '>') "character")
-
-
 
 -- | Parses a possibly empty list of attributes
 --
@@ -160,26 +124,6 @@ openTag = P.between (P.char '<') (P.char '>') tagContent
 -- Success [("a",Nothing),("b",Nothing)]
 -- Parse a key
 -- Parse a key
--- attributes :: P.Parser [(String, Maybe String)]
--- attributes = P.many (P.opt P.ws1 `P.pThen` attribute)
-
--- attribute :: P.Parser (String, Maybe String)
--- attribute = P.pWith P.ident $ \name ->
---   P.pMap (\valueOpt -> (name, valueOpt)) $ attributeValue
-
--- attributeValue :: P.Parser (Maybe String)
--- attributeValue = P.opt (P.char '=' `P.pThen` (P.between (P.char '"') (P.char '"') P.ident `P.orElse` P.between (P.char '\'') (P.char '\'') P.ident))
-
--- attributes :: P.Parser [(String, Maybe String)]
--- attributes = P.many (P.opt P.ws1 `P.pThen` attribute)
-
--- attribute :: P.Parser (String, Maybe String)
--- attribute = P.pWith P.ident $ \name ->
---   P.pMap (\valueOpt -> (name, valueOpt)) $ P.opt (P.char '=' `P.pThen` attributeValue)
-
--- attributeValue :: P.Parser String
--- attributeValue = P.between (P.char '"') (P.char '"') P.ident `P.orElse` P.between (P.char '\'') (P.char '\'') P.ident
-
 attributes :: P.Parser [(String, Maybe String)]
 attributes = P.sepBySome P.ws1 attribute
 
@@ -188,14 +132,14 @@ attribute = attributeWithValue `P.orElse` attributeWithoutValue
 
 attributeWithValue :: P.Parser (String, Maybe String)
 attributeWithValue = P.pWith P.ident $ \name ->
-  P.pMap (\value -> (name, Just value)) (P.char '=' `P.pThen` attributeValue)
+  let parseValue = P.char '=' `P.pThen` attributeValue
+  in P.pMap (\value -> (name, Just value)) parseValue
 
 attributeWithoutValue :: P.Parser (String, Maybe String)
 attributeWithoutValue = P.pMap (\name -> (name, Nothing)) P.ident
 
 attributeValue :: P.Parser String
 attributeValue = P.between (P.char '"') (P.char '"') P.ident `P.orElse` P.between (P.char '\'') (P.char '\'') P.ident
-
 
 -- | Parses the given closing tag
 --
@@ -214,6 +158,7 @@ attributeValue = P.between (P.char '"') (P.char '"') P.ident `P.orElse` P.betwee
 --
 -- >>> P.parse (closingTag "a") "</div>"
 -- Error (UnexpectedInput {gotInput = "d", expectedInput = "character 'a'"})
+
 closingTag :: String -> P.Parser ()
 closingTag tag =
   P.tag "</" `P.pThen` P.ws `P.pThen` tagParser `P.pThen` P.ws `P.pThen` P.tag ">" `P.pThen` P.succeed ()
@@ -238,6 +183,7 @@ closingTag tag =
 --
 -- >>> P.parse (betweenHtmlTags (P.char 'x')) "<a y>x</a>"
 -- Success ('x',"a",[("y",Nothing)])
+
 betweenHtmlTags :: P.Parser a -> P.Parser (a, String, [(String, Maybe String)])
 betweenHtmlTags p = P.pWith openTag (\(tag, attrs) -> P.pWith p (\result -> P.pWith (closingTag tag) (\() -> P.succeed (result, tag, attrs))))
 
@@ -271,27 +217,30 @@ betweenHtmlTags p = P.pWith openTag (\(tag, attrs) -> P.pWith p (\result -> P.pW
 --   where
 --     selfClosingTag = P.pMap (\(tagName, attrs) -> HtmlNode tagName attrs []) selfClosing
 
---     htmlTag = P.pMap (\(content, tagName, attrs) -> HtmlNode tagName attrs content) (betweenHtmlTags (P.many html))
+--     htmlTag = 
+--       P.pMap (\(content, tagName, attrs) -> HtmlNode tagName attrs (map trimWhitespace content)) 
+--       (betweenHtmlTags (P.many html))
+
+--     trimWhitespace (Text str) = Text (trimLeading str)
+--     trimWhitespace node@(Node _) = node
+
+--     trimLeading :: String -> String
+--     trimLeading = dropWhile (\c -> c == ' ')
+
+--     trim :: String -> String
+--     trim = f . f
+--       where f = reverse . dropWhile (\c -> c == ' ')
 
 htmlNode :: P.Parser HtmlNode
-htmlNode =
-  P.orElse selfClosingTag htmlTag
+htmlNode = P.orElse selfClosingTag htmlTag
   where
-    selfClosingTag = P.pMap (\(tagName, attrs) -> HtmlNode tagName attrs []) selfClosing
+    selfClosingTag = let parseSelfClosing = P.pMap (\(tagName, attrs) -> HtmlNode tagName attrs []) selfClosing
+                    in parseSelfClosing
 
-    htmlTag = 
-      P.pMap (\(content, tagName, attrs) -> HtmlNode tagName attrs (map trimWhitespace content)) 
-      (betweenHtmlTags (P.many html))
+    htmlTag = let parseHtmlTag = P.pMap (\(content, tagName, attrs) -> HtmlNode tagName attrs content)
+                    (betweenHtmlTags (P.many html))
+              in parseHtmlTag
 
-    trimWhitespace (Text str) = Text (trimLeading str)
-    trimWhitespace node@(Node _) = node
-
-    trimLeading :: String -> String
-    trimLeading = dropWhile (\c -> c == ' ')
-
-    trim :: String -> String
-    trim = f . f
-      where f = reverse . dropWhile (\c -> c == ' ')
 -- | Parses a HTML node or a text node
 --
 -- Some useful functions:
@@ -314,10 +263,7 @@ htmlNode =
 --     <z/>
 --   </b>
 -- </a>
--- html :: P.Parser Html
--- html = P.pMap Node htmlNode `P.orElse` P.pMap Text text
---   where
---     text = P.some (P.satisfies (\c -> c /= '<') "text")
+
 html :: P.Parser Html
 html = P.orElse (P.pMap Node htmlNode) (P.pMap Text text)
   where
